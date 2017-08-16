@@ -17,7 +17,9 @@ static const int packetSize[] = { 12, 8, 4, 1 };
 
 const AVal sg_av_connect			= AVC("connect");
 const AVal sg_av_app				= AVC("app");						// 字符串  客户端连接到的服务器端应用的名字
-const AVal sg_av_flashver			= AVC("flashver");					// 字符串  Flash Player版本号
+const AVal sg_av_type				= AVC("type");
+const AVal sg_av_nonprivate			= AVC("nonprivate");				
+const AVal sg_av_flashVer			= AVC("flashVer");					// 字符串  Flash Player版本号
 const AVal sg_av_swfUrl				= AVC("swfUrl");					// 字符串  进行当前连接的SWF文件源地址
 const AVal sg_av_tcUrl				= AVC("tcUrl");						// 字符串  服务器 URL
 const AVal sg_av_fpad				= AVC("fpad");						// 布尔    如果使用了代理就是true
@@ -994,70 +996,61 @@ bool CRtmpClient::SendConnect()
 	packet.m_nTimeStamp = 0;
 	packet.m_nInfoField2 = 0;
 	packet.m_hasAbsTimestamp = 0;
-
 	packet.m_body = pBuff + RTMP_MAX_HEADER_SIZE;
-	char* pBodyEn = packet.m_body;
 
-	AMFObjectProperty objConnect;
-	objConnect.SetName(sg_av_connect);
-	objConnect.SetType(AMF_OBJECT);
+	char* pBodyEn = packet.m_body;
+	// Command Name: "connect"
+	pBodyEn = AMFObject::EncodeString(pBodyEn, pEnd, sg_av_connect);
+	// Transaction ID: "connect"
+	pBodyEn = AMFObject::EncodeNumber(pBodyEn, pEnd, 1);
+
+	// Command Object 
 	{
-		AMFObject objChilds;
-		int iChildCount = 0;
+		AMFObject objCommand;
+		if(Link.app.av_len)
 		{
 			AMFObjectProperty objTemp;
 			objTemp.SetName(sg_av_app);
 			objTemp.SetType(AMF_STRING);
-			objTemp.SetString(AVC("live_bak1"));
-			objChilds.AddProp(&objTemp);
-			++iChildCount;
+			objTemp.SetString(Link.app);
+			objCommand.AddProp(&objTemp);
+		}
+		if (Link.protocol & RTMP_FEATURE_WRITE)
+		{
+			AMFObjectProperty objTemp;
+			objTemp.SetName(sg_av_type);
+			objTemp.SetType(AMF_STRING);
+			objTemp.SetString(sg_av_nonprivate);
+			objCommand.AddProp(&objTemp);
+		}
+		if (Link.flashVer.av_len)
+		{
+			AMFObjectProperty objTemp;
+			objTemp.SetName(sg_av_flashVer);
+			objTemp.SetType(AMF_STRING);
+			objTemp.SetString(Link.flashVer);
+			objCommand.AddProp(&objTemp);
+		}
+		if (Link.swfUrl.av_len)
+		{
+			AMFObjectProperty objTemp;
+			objTemp.SetName(sg_av_swfUrl);
+			objTemp.SetType(AMF_STRING);
+			objTemp.SetString(Link.swfUrl);
+			objCommand.AddProp(&objTemp);
+		}
+		if (Link.tcUrl.av_len)
+		{
+			AMFObjectProperty objTemp;
+			objTemp.SetName(sg_av_tcUrl);
+			objTemp.SetType(AMF_STRING);
+			objTemp.SetString(Link.tcUrl);
+			objCommand.AddProp(&objTemp);
 		}
 
-		objChilds.o_num = iChildCount;
-		objConnect.SetObject(objChilds);
+		pBodyEn = objCommand.Encode(pBodyEn, pEnd);
 	}
 
-	//pBodyEn = AMFObject::EncodeString(pBodyEn, pEnd, sg_av_connect);
-	//pBodyEn = AMFObject::EncodeNumber(pBodyEn, pEnd, ++r->m_numInvokes);
-	//*pBodyEn++ = AMF_OBJECT;
-
-	//pBodyEn = EncodeNamedString(pBodyEn, pEnd, &av_app, &r->Link.app);
-	//if (!pBodyEn)
-	//{
-	//	return FALSE;
-	//}
-	//if (r->Link.protocol & RTMP_FEATURE_WRITE)
-	//{
-	//	pBodyEn = AMF_EncodeNamedString(pBodyEn, pEnd, &av_type, &av_nonprivate);
-	//	if (!pBodyEn)
-	//	{
-	//		return FALSE;
-	//	}
-	//}
-	//if (r->Link.flashVer.av_len)
-	//{
-	//	pBodyEn = AMF_EncodeNamedString(pBodyEn, pEnd, &av_flashVer, &r->Link.flashVer);
-	//	if (!pBodyEn)
-	//	{
-	//		return FALSE;
-	//	}
-	//}
-	//if (r->Link.swfUrl.av_len)
-	//{
-	//	pBodyEn = AMF_EncodeNamedString(pBodyEn, pEnd, &av_swfUrl, &r->Link.swfUrl);
-	//	if (!pBodyEn)
-	//	{
-	//		return FALSE;
-	//	}
-	//}
-	//if (r->Link.tcUrl.av_len)
-	//{
-	//	pBodyEn = AMF_EncodeNamedString(pBodyEn, pEnd, &av_tcUrl, &r->Link.tcUrl);
-	//	if (!pBodyEn)
-	//	{
-	//		return FALSE;
-	//	}
-	//}
 	//if (!(r->Link.protocol & RTMP_FEATURE_WRITE))
 	//{
 	//	pBodyEn = AMF_EncodeNamedBoolean(pBodyEn, pEnd, &av_fpad, FALSE);
@@ -1137,10 +1130,13 @@ bool CRtmpClient::SendConnect()
 	//		}
 	//	}
 	//}
-	//packet.m_nBodySize = pBodyEn - packet.m_body;
+	packet.m_nBodySize = pBodyEn - packet.m_body;
 
-	//// 发送 connect(streamid);
-	//return RTMP_SendPacket(r, &packet, TRUE);
+	// 发送 connect(streamid);
+	if (!SendPacket(&packet, TRUE))
+	{
+		return false;
+	}
 
 	return false;
 }

@@ -3,8 +3,313 @@
 #define AMF3_INTEGER_MAX	268435455
 #define AMF3_INTEGER_MIN	-268435456
 
-static const AMFObjectProperty AMFProp_Invalid = { { 0, 0 }, AMF_INVALID };
+static const AMFObjectProperty AMFProp_Invalid;
 static const AVal AV_empty = { 0, 0 };
+
+/* Data is Big-Endian */
+/************************************************************************************************************
+*	编码int16(这个整数占用两个字节);
+*
+*	依次截取1个字节进行赋值;
+************************************************************************************************************/
+char* AMFObject::EncodeInt16(OUT char* strOutPut, OUT char* strOutEnd, IN const short& iVal)
+{
+	if (strOutPut + 2 > strOutEnd)
+	{
+		return NULL;
+	}
+
+	strOutPut[1] = iVal & 0xff;	// strOutPut[1] = iVal; 两者等价;
+	strOutPut[0] = iVal >> 8;
+	return strOutPut + 2;
+}
+
+/************************************************************************************************************
+*	编码int24(这个整数占用三个字节);
+*
+*	依次截取1个字节进行赋值;
+************************************************************************************************************/
+char* AMFObject::EncodeInt24(OUT char* strOutPut, OUT char* strOutEnd, IN const int& iVal)
+{
+	if (strOutPut + 3 > strOutEnd)
+		return NULL;
+
+	strOutPut[2] = iVal & 0xff;
+	strOutPut[1] = iVal >> 8;
+	strOutPut[0] = iVal >> 16;
+	return strOutPut + 3;
+}
+
+/************************************************************************************************************
+*	编码int32(这个整数占用四个字节);
+*
+*	依次截取1个字节进行赋值;
+************************************************************************************************************/
+char* AMFObject::EncodeInt32(OUT char* strOutPut, OUT char* strOutEnd, IN const int& iVal)
+{
+	if (strOutPut + 4 > strOutEnd)
+		return NULL;
+
+	strOutPut[3] = iVal & 0xff;
+	strOutPut[2] = iVal >> 8;
+	strOutPut[1] = iVal >> 16;
+	strOutPut[0] = iVal >> 24;
+	return strOutPut + 4;
+}
+
+/************************************************************************************************************
+*	编码字符串bv;
+*
+*	第一个字节存字符串类型;
+*	若字节小于65536,用两个字节存储长度; 否则用4个字节存储长度;
+************************************************************************************************************/
+char* AMFObject::EncodeString(OUT char* strOutPut, OUT char* strOutEnd, IN const AVal& strVal)
+{
+	if ((strVal.av_len < 65536 && strOutPut + 1 + 2 + strVal.av_len > strOutEnd) || (strOutPut + 1 + 4 + strVal.av_len > strOutEnd))
+	{
+		return NULL;
+	}
+
+	// 第一个字节存字符串类型;
+	// 若字节小于65536, 用两个字节存储长度; 否则用4个字节存储长度;
+	if (strVal.av_len < 65536)
+	{
+		*strOutPut++ = AMF_STRING;
+		strOutPut = EncodeInt16(strOutPut, strOutEnd, strVal.av_len);
+	}
+	else
+	{
+		*strOutPut++ = AMF_LONG_STRING;
+		strOutPut = EncodeInt32(strOutPut, strOutEnd, strVal.av_len);
+	}
+
+	// 然后将avl内容赋值即可;
+	memcpy(strOutPut, strVal.av_val, strVal.av_len);
+	strOutPut += strVal.av_len;
+
+	return strOutPut;
+}
+
+/************************************************************************************************************
+*	编码数值double;
+*
+*	float字的存储顺序等于字节顺序;
+*		大端字节顺序,直接赋值; 小端字节顺序,反转赋值;
+*
+*	float字的存储顺序不等字节顺序;
+*		大端字节顺序,反转赋值; 小端字节顺序,直接赋值;
+************************************************************************************************************/
+char* AMFObject::EncodeNumber(OUT char* strOutPut, OUT char* strOutEnd, IN const double& dVal)
+{
+	if (strOutPut + 1 + 8 > strOutEnd)
+	{
+		return NULL;
+	}
+
+	*strOutPut++ = AMF_NUMBER;	/* type: Number */
+
+#if __FLOAT_WORD_ORDER == __BYTE_ORDER
+#if __BYTE_ORDER == __BIG_ENDIAN
+	memcpy(strOutPut, &dVal, 8);
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+	{
+		unsigned char* ci, *co;
+		ci = (unsigned char*)&dVal;
+		co = (unsigned char*)strOutPut;
+		co[0] = ci[7];
+		co[1] = ci[6];
+		co[2] = ci[5];
+		co[3] = ci[4];
+		co[4] = ci[3];
+		co[5] = ci[2];
+		co[6] = ci[1];
+		co[7] = ci[0];
+	}
+#endif
+#else
+#if __BYTE_ORDER == __LITTLE_ENDIAN	/* __FLOAT_WORD_ORER == __BIG_ENDIAN */
+	{
+		unsigned char* ci, *co;
+		ci = (unsigned char*)&dVal;
+		co = (unsigned char*)strOutPut;
+		co[0] = ci[3];
+		co[1] = ci[2];
+		co[2] = ci[1];
+		co[3] = ci[0];
+		co[4] = ci[7];
+		co[5] = ci[6];
+		co[6] = ci[5];
+		co[7] = ci[4];
+	}
+#else /* __BYTE_ORDER == __BIG_ENDIAN && __FLOAT_WORD_ORER == __LITTLE_ENDIAN */
+	{
+		unsigned char* ci, *co;
+		ci = (unsigned char*)&dVal;
+		co = (unsigned char*)strOutPut;
+		co[0] = ci[4];
+		co[1] = ci[5];
+		co[2] = ci[6];
+		co[3] = ci[7];
+		co[4] = ci[0];
+		co[5] = ci[1];
+		co[6] = ci[2];
+		co[7] = ci[3];
+	}
+#endif
+#endif
+
+	return strOutPut + 8;
+}
+
+/************************************************************************************************************
+*	编码布尔;
+*
+*	第一个字节存字符串类型;
+*	若二个字节： bVal若为真存1 为假存0;
+************************************************************************************************************/
+char* AMFObject::EncodeBoolean(OUT char* strOutPut, OUT char* strOutEnd, IN const int& bVal)
+{
+	if (strOutPut + 2 > strOutEnd)
+	{
+		return NULL;
+	}
+
+	*strOutPut++ = AMF_BOOLEAN;
+
+	*strOutPut++ = bVal ? 0x01 : 0x00;
+
+	return strOutPut;
+}
+
+/************************************************************************************************************
+*	解码int16(这个整数占用两个字节);
+*
+*	c[0]左移8位(就是乘以256)+c[1];
+************************************************************************************************************/
+unsigned short AMFObject::DecodeInt16(IN const char* strInput)
+{
+	unsigned char* c = (unsigned char*)strInput;
+	unsigned short val;
+	val = (c[0] << 8) | c[1];
+	return val;
+}
+
+/************************************************************************************************************
+*	解码int24(这个整数占用三个字节);
+*
+*	c[0]左移16位+c[1]左移8位+c[2];
+************************************************************************************************************/
+unsigned int AMFObject::DecodeInt24(IN const char* strInput)
+{
+	unsigned char* c = (unsigned char*)strInput;
+	unsigned int val;
+	val = (c[0] << 16) | (c[1] << 8) | c[2];
+	return val;
+}
+
+/************************************************************************************************************
+*	解码int32(这个整数占用四个字节);
+*
+*	c[0]左移24位+c[1]左移16位+c[2]左移8位+c[3];
+************************************************************************************************************/
+unsigned int AMFObject::DecodeInt32(IN const char* strInput)
+{
+	unsigned char* c = (unsigned char*)strInput;
+	unsigned int val;
+	val = (c[0] << 24) | (c[1] << 16) | (c[2] << 8) | c[3];
+	return val;
+}
+
+/************************************************************************************************************
+*	解码String;
+*
+*	前两个字节是长度,后面是内容;
+************************************************************************************************************/
+void AMFObject::DecodeString(OUT AVal&  strVal, IN const char* strInput)
+{
+	strVal.av_len = DecodeInt16(strInput);
+	strVal.av_val = (strVal.av_len > 0) ? (char*)strInput + 2 : NULL;
+}
+
+/************************************************************************************************************
+*	解码LongString;
+*
+*	前四个字节是长度,后面是内容;
+************************************************************************************************************/
+void AMFObject::DecodeLongString(OUT AVal&  strVal, IN const char* strInput)
+{
+	strVal.av_len = DecodeInt32(strInput);
+	strVal.av_val = (strVal.av_len > 0) ? (char*)strInput + 4 : NULL;
+}
+
+/************************************************************************************************************
+*	解码数值double;
+*
+*	float字的存储顺序等于字节顺序;
+*		大端字节顺序,直接赋值; 小端字节顺序,反转赋值;
+*
+*	float字的存储顺序不等字节顺序;
+*		大端字节顺序,反转赋值; 小端字节顺序,直接赋值;
+************************************************************************************************************/
+double AMFObject::DecodeNumber(IN const char* strInput)
+{
+	double dVal;
+#if __FLOAT_WORD_ORDER == __BYTE_ORDER		// 如果float字的存储顺序等于字节顺序;
+#if __BYTE_ORDER == __BIG_ENDIAN			// 如果是大端字节顺序;
+	memcpy(&dVal, data, 8);					// 直接复制;
+#elif __BYTE_ORDER == __LITTLE_ENDIAN		// 如果是小端字节顺序;
+	unsigned char* ci, *co;
+	ci = (unsigned char*)strInput;
+	co = (unsigned char*)&dVal;
+	co[0] = ci[7];
+	co[1] = ci[6];
+	co[2] = ci[5];
+	co[3] = ci[4];
+	co[4] = ci[3];
+	co[5] = ci[2];
+	co[6] = ci[1];
+	co[7] = ci[0];
+#endif
+#else
+#if __BYTE_ORDER == __LITTLE_ENDIAN	/* __FLOAT_WORD_ORER == __BIG_ENDIAN */
+	unsigned char* ci, *co;
+	ci = (unsigned char*)strInput;
+	co = (unsigned char*)&dVal;
+	co[0] = ci[3];
+	co[1] = ci[2];
+	co[2] = ci[1];
+	co[3] = ci[0];
+	co[4] = ci[7];
+	co[5] = ci[6];
+	co[6] = ci[5];
+	co[7] = ci[4];
+#else /* __BYTE_ORDER == __BIG_ENDIAN && __FLOAT_WORD_ORER == __LITTLE_ENDIAN */
+	unsigned char* ci, *co;
+	ci = (unsigned char*)strInput;
+	co = (unsigned char*)&dVal;
+	co[0] = ci[4];
+	co[1] = ci[5];
+	co[2] = ci[6];
+	co[3] = ci[7];
+	co[4] = ci[0];
+	co[5] = ci[1];
+	co[6] = ci[2];
+	co[7] = ci[3];
+#endif
+#endif
+	return dVal;
+}
+
+/************************************************************************************************************
+*	解码布尔;
+*
+*	判断内容是否为0;
+************************************************************************************************************/
+bool AMFObject::DecodeBoolean(IN const char* strInput)
+{
+	return *strInput != 0;
+}
+
 
 /************************************************************************************************************
 *	AMF3读取数字;
@@ -84,6 +389,16 @@ int AMFObject::AMF3ReadString(OUT AVal& strVal, IN const char* strInput)
 		return len + nSize;
 	}
 	return len;
+}
+
+AMFObject::AMFObject()
+{
+	o_num = 0;
+	o_props = NULL;
+}
+
+AMFObject::~AMFObject()
+{
 }
 
 /************************************************************************************************************
@@ -578,6 +893,14 @@ AMFObjectProperty* AMFObject::GetProp(IN const AVal& strName, IN const int iInde
 	}
 
 	return (AMFObjectProperty*)&AMFProp_Invalid;
+}
+
+AMFObjectProperty::AMFObjectProperty(): p_name(AVC(NULL)), p_type(AMF_INVALID), p_UTCoffset(0)
+{
+}
+
+AMFObjectProperty::~AMFObjectProperty()
+{
 }
 
 /* AMFObjectProperty */

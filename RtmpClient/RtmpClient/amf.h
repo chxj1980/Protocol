@@ -99,6 +99,10 @@ public:
 	// AMF3读取字符串
 	static int AMF3ReadString(OUT AVal& strVal, IN const char* strInput);
 
+public:
+	AMFObject();
+	~AMFObject();
+
 	// AMFProp_Encode快捷编码(添加name+value);
 	static char* EncodeNamedString( OUT char* strOutPut, OUT char* strOutEnd, IN const AVal& strName, IN const AVal&  strVal);
 	static char* EncodeNamedNumber( OUT char* strOutPut, OUT char* strOutEnd, IN const AVal& strName, IN const double& dVal);
@@ -123,13 +127,27 @@ public:
 	AMFObjectProperty* GetProp(IN const AVal& strName, IN const int iIndex);
 
 public:
-	int o_num;							// 属性数目;
+	int o_num;					// 属性数目;
 	AMFObjectProperty *o_props;	// 属性数组;
+};
+
+union AMFVal
+{
+	AMFVal():p_number(0) {}
+	~AMFVal() {}
+
+	double		p_number;
+	AVal		p_aval;
+	AMFObject	p_object;
 };
 
 // AMF对象的属性;
 class AMFObjectProperty
 {
+public:
+	AMFObjectProperty();
+	~AMFObjectProperty();
+
 public:
 	// 名称
 	void SetName(IN const AVal& strName);
@@ -165,15 +183,10 @@ public:
 	void Reset();
 
 public:
-	AVal p_name;			// 属性名称;
-	AMFDataType p_type;		// 属性类型;
-	union
-	{
-		double p_number;
-		AVal p_aval;
-		AMFObject p_object;
-	} p_vu;					// 属性数值;
-	int16_t p_UTCoffset;	// UTC偏移;
+	AVal		p_name;			// 属性名称;
+	AMFDataType p_type;			// 属性类型;
+	AMFVal		p_vu;			// 属性数值;
+	int16_t		p_UTCoffset;	// UTC偏移;
 };
 
 // AMF3类型
