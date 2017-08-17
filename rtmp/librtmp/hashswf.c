@@ -66,8 +66,7 @@ extern TLS_CTX RTMP_TLS_ctx;
 
 #define	AGENT	"Mozilla/5.0"
 
-HTTPResult
-HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
+HTTPResult HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
 {
     char *host, *path;
     char *p1, *p2;
@@ -141,8 +140,7 @@ HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
         i += sprintf(sb.sb_buf + i, "If-Modified-Since: %s\r\n", http->date);
     i += sprintf(sb.sb_buf + i, "\r\n");
 
-    if (connect
-            (sb.sb_socket, (struct sockaddr *)&sa, sizeof(struct sockaddr)) < 0)
+    if (connect(sb.sb_socket, (struct sockaddr *)&sa, sizeof(struct sockaddr)) < 0)
     {
         ret = HTTPRES_LOST_CONNECTION;
         goto leave;
@@ -172,8 +170,7 @@ HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
 #define HTTP_TIMEOUT	5
     {
         SET_RCVTIMEO(tv, HTTP_TIMEOUT);
-        if (setsockopt
-                (sb.sb_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)))
+        if (setsockopt(sb.sb_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)))
         {
             RTMP_Log(RTMP_LOGERROR, "%s, Setting socket timeout to %ds failed!",
                      __FUNCTION__, HTTP_TIMEOUT);
@@ -648,9 +645,7 @@ out:
     return ret;
 }
 #else
-int
-RTMP_HashSWF(const char *url, unsigned int *size, unsigned char *hash,
-             int age)
+int RTMP_HashSWF(const char *url, unsigned int *size, unsigned char *hash, int age)
 {
     return -1;
 }

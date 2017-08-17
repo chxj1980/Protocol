@@ -23,7 +23,8 @@ int ReadTime(uint32_t *utime, FILE*fp);
 
 RTMP*rtmp = NULL;			// rtmp应用指针;
 RTMPPacket*packet = NULL;	// rtmp包结构;
-char* rtmpurl = "rtmp://www.bj-mobiletv.com:8000/live/test";	//连接的URL;
+//char* rtmpurl = "rtmp://www.bj-mobiletv.com:8000/live/test";	//连接的URL;
+char* rtmpurl = "rtmp://teacher.xescdn.com/live_bak/test12";	//连接的URL;
 char* flvfilename = "test.flv";	// 读取的flv文件;
 
 // VLC拉流地址： rtmp://www.bj-mobiletv.com:8000/live/test;
@@ -55,7 +56,7 @@ int main()
 	}
 
 	/////////////////////////////////初始化//////////////////////	
-	RTMP_LogLevel lvl = RTMP_LOGINFO;;	// 信息等级(0-6);
+	RTMP_LogLevel lvl = RTMP_LOGALL;;	// 信息等级(0-6);
 	RTMP_LogSetLevel(lvl);				// 设置信息等级;
 	RTMP_LogSetOutput(pFileLog);		// 设置信息输出文件;
 
@@ -85,7 +86,7 @@ int main()
 		return -1;
 	}
 	packet->m_hasAbsTimestamp = 0;	// 绝对时间戳;
-	packet->m_nChannel = 0x04;		// 通道;
+	packet->m_nChannel = 0x09;		// 通道;
 	packet->m_nInfoField2 = rtmp->m_stream_id;
 
 	FILE* pFileFlv = NULL;

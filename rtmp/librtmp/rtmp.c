@@ -4846,8 +4846,6 @@ int RTMP_SendPacket(RTMP *r, RTMPPacket *packet, int queue)
 			nChunkSize = nSize;	
 		}
 
-        RTMP_LogHexString(RTMP_LOGDEBUG2, (uint8_t *)header, hSize);
-        RTMP_LogHexString(RTMP_LOGDEBUG2, (uint8_t *)buffer, nChunkSize);
 		// 如果r->Link.protocol采用Http协议 则将RTMP包数据封装成多个Chunk 然后一次性发送;  
 		// 否则每封装成一个块，就立即发送出去;
         if (tbuf)
@@ -4862,13 +4860,17 @@ int RTMP_SendPacket(RTMP *r, RTMPPacket *packet, int queue)
         {
 			// 直接将负载数据和块头数据发送出去;
             wrote = WriteN(r, header, nChunkSize + hSize);
+
+			RTMP_LogHexString(RTMP_LOGDEBUG2, (uint8_t *)header, hSize);
+			RTMP_LogHexString(RTMP_LOGDEBUG2, ((uint8_t *)header) + hSize, nChunkSize);
+
 			if (!wrote)
 			{
 				return FALSE;
 			}
         }
         nSize -= nChunkSize;	// 消息负载长度 - Chunk负载长度;
-        buffer += nChunkSize;	// buffer指针前移1个Chunk负载长度;
+        buffer += nChunkSize;	// buffer指针后移1个Chunk负载长度;
         hSize = 0;
 
 		// 如果消息负载数据还没有发完 准备填充下一个块的块头数据; 
@@ -5957,8 +5959,7 @@ fail:
 
 static const AVal av_setDataFrame = AVC("@setDataFrame");
 
-int
-RTMP_Write(RTMP *r, const char *buf, int size)
+int RTMP_Write(RTMP *r, const char *buf, int size)
 {
     RTMPPacket *pkt = &r->m_write;
     char *pend, *enc;

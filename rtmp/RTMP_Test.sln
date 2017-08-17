@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RTMP_Test", "RTMP_Test\RTMP_Test.vcxproj", "{F6BDD7EE-1B4D-494F-A35C-5FCC5126364C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "librtmp", "librtmp\librtmp.vcxproj", "{22BF0EE3-CDCD-4925-A5F6-0A94CB5D4DB1}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rtmp_dump", "rtmp_dump\rtmp_dump.vcxproj", "{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +31,14 @@ Global
 		{22BF0EE3-CDCD-4925-A5F6-0A94CB5D4DB1}.Release|Win32.Build.0 = Release|Win32
 		{22BF0EE3-CDCD-4925-A5F6-0A94CB5D4DB1}.Release|x64.ActiveCfg = Release|x64
 		{22BF0EE3-CDCD-4925-A5F6-0A94CB5D4DB1}.Release|x64.Build.0 = Release|x64
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Debug|Win32.Build.0 = Debug|Win32
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Debug|x64.ActiveCfg = Debug|x64
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Debug|x64.Build.0 = Debug|x64
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Release|Win32.ActiveCfg = Release|Win32
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Release|Win32.Build.0 = Release|Win32
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Release|x64.ActiveCfg = Release|x64
+		{62DAFC19-945E-4D1C-98B8-48BA2A075EC2}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
