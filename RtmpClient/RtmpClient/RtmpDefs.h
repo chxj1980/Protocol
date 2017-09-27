@@ -7,6 +7,9 @@
 #define RTMP_BUFFER_CACHE_SIZE		(16*1024)
 
 #define RTMP_SIG_SIZE				1536
+#define RTMP_LARGE_HEADER_SIZE		12
+
+#define RTMP_DEFAULT_CHUNKSIZE		128
 
 // rtmp特点
 #define RTMP_FEATURE_HTTP	0x01
@@ -26,6 +29,12 @@ enum BasicHeaderFmt
 	BASICHEADER_FMT_THREE	= 3		// 0 bytes.
 };
 
+typedef struct RTMP_METHOD
+{
+	AVal name;
+	int num;
+} RTMP_METHOD;
+
 // 消息头-类型
 enum MsgHeaderType
 {
@@ -36,22 +45,21 @@ enum MsgHeaderType
 	MSGHEADER_TYPE_SERVER_BW			= 0x05,		// 
 	MSGHEADER_TYPE_CLIENT_BW			= 0x06,		// 
 	// MSGHEADER_TYPE_TYPE_...				0x07 
-	MSGHEADER_TYPE_TYPE_AUDIO			= 0x08,		// audio
-	MSGHEADER_TYPE_TYPE_VIDEO			= 0x09,		// video
+	MSGHEADER_TYPE_AUDIO				= 0x08,		// audio
+	MSGHEADER_TYPE_VIDEO				= 0x09,		// video
 	/*      RTMP_PACKET_TYPE_...                0x0A */
 	/*      RTMP_PACKET_TYPE_...                0x0B */
 	/*      RTMP_PACKET_TYPE_...                0x0C */
 	/*      RTMP_PACKET_TYPE_...                0x0D */
 	/*      RTMP_PACKET_TYPE_...                0x0E */
-//#define RTMP_PACKET_TYPE_FLEX_STREAM_SEND   0x0F
-//#define RTMP_PACKET_TYPE_FLEX_SHARED_OBJECT 0x10
-//#define RTMP_PACKET_TYPE_FLEX_MESSAGE       0x11
-//#define RTMP_PACKET_TYPE_INFO               0x12
-//#define RTMP_PACKET_TYPE_SHARED_OBJECT      0x13
-	MSGHEADER_TYPE_TYPEINVOKE			= 0x14,
-//	/*      RTMP_PACKET_TYPE_...                0x15 */
-//#define RTMP_PACKET_TYPE_FLASH_VIDEO        0x16
-
+	MSGHEADER_TYPE_FLEX_STREAM_SEND		= 0x0F,
+	MSGHEADER_TYPE_FLEX_SHARED_OBJECT	= 0x10,
+	MSGHEADER_TYPE_FLEX_MESSAGE			= 0x11,
+	MSGHEADER_TYPE_INFO					= 0x12,
+	MSGHEADER_TYPE_SHARED_OBJECT		= 0x13,
+	MSGHEADER_TYPE_INVOKE				= 0x14,
+	//RTMP_PACKET_TYPE_...                0x15 */
+	MSGHEADER_TYPE_FLASH_VIDEO			= 0x16,
 };
 
 // rtmp协议类型
@@ -68,19 +76,68 @@ typedef enum RtmpProtocol
 
 }RtmpProtocol_t;
 
-typedef struct RTMPPacket
+enum ReadFlag
 {
-	uint8_t m_headerType;
-	uint8_t m_packetType;
+	READ_FLAG_HEADER		= 0x01,
+	READ_FLAG_RESUME		= 0x02,
+	READ_FLAG_NO_IGNORE		= 0x04,
+	READ_FLAG_GOTKF			= 0x08,
+	READ_FLAG_GOTFLVK		= 0x10,
+	READ_FLAG_SEEKING		= 0x20,
+};
+
+enum ReadStatus
+{
+	READ_STATUS_COMPLETE	= -3,
+	READ_STATUS_ERROR		= -2,
+	READ_STATUS_EOF			= -1,
+	READ_STATUS_IGNORE		= 0,
+};
+
+typedef struct RTMP_READ
+{
+	char *buf;
+	char *bufpos;
+	unsigned int buflen;
+	uint32_t timestamp;
+	uint8_t dataType;
+	int flags;	// ReadFlag
+
+	ReadStatus status;
+
+	/* if bResume == TRUE */
+	uint8_t initialFrameType;
+	uint32_t nResumeTS;
+	char *metaHeader;
+	char *initialFrame;
+	uint32_t nMetaHeaderSize;
+	uint32_t nInitialFrameSize;
+	uint32_t nIgnoredFrameCounter;
+	uint32_t nIgnoredFlvFrameCounter;
+} RTMP_READ;
+
+struct RtmpChunk
+{
+	char c_header[RTMP_MAX_HEADER_SIZE];
+	int c_headerSize;
+	char *c_chunk;
+	int c_chunkSize;
+};
+
+struct RtmpMsg
+{
+	uint8_t m_fmt;
+	int m_csid;
+
+	uint8_t m_msgType;
 	uint8_t m_hasAbsTimestamp;	/* timestamp absolute or relative? */
-	int m_nChannel;
 	uint32_t m_nTimeStamp;		/* timestamp */
 	int32_t m_nInfoField2;		/* last 4 bytes in a long header */
 	uint32_t m_nBodySize;
 	uint32_t m_nBytesRead;
-	//RTMPChunk *m_chunk;
+	RtmpChunk *m_chunk;
 	char *m_body;
-} RTMPPacket;
+};
 
 //typedef struct RTMPChunk
 //{

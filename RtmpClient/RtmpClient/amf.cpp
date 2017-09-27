@@ -4,7 +4,6 @@
 #define AMF3_INTEGER_MIN	-268435456
 
 static const AMFObjectProperty AMFProp_Invalid;
-static const AVal AV_empty = { 0, 0 };
 
 /* Data is Big-Endian */
 /************************************************************************************************************
@@ -740,7 +739,7 @@ int AMFObject::Decode_AMF3(IN const char* strInput, IN int iSize, IN bool bDecod
 
 			for (i = 0; i < cd.cd_num; i++)
 			{
-				AVal memberName = AV_empty;
+				AVal memberName = sg_emptyVal;
 				len = AMF3ReadString(memberName, strInput);
 				//RTMP_Log(//RTMP_LOGDEBUG, "Member: %s", memberName.av_val);
 				cd.AMF3CD_AddProp(&memberName);
@@ -812,6 +811,33 @@ int AMFObject::Decode_AMF3(IN const char* strInput, IN int iSize, IN bool bDecod
 	return nOriginalSize - iSize;
 }
 
+void AMFObject::AddProp(IN const AVal& strName, IN const double& dVal)
+{
+	AMFObjectProperty objProp;
+	objProp.SetName(strName);
+	objProp.SetType(AMF_NUMBER);
+	objProp.SetNumber(dVal);
+	AddProp(&objProp);
+}
+
+void AMFObject::AddProp(IN const AVal& strName, IN const AVal& strVal)
+{
+	AMFObjectProperty objProp;
+	objProp.SetName(strName);
+	objProp.SetType(AMF_STRING);
+	objProp.SetString(strVal);
+	AddProp(&objProp);
+}
+
+void AMFObject::AddProp(IN const AVal& strName, IN const AMFObject& objVal)
+{
+	AMFObjectProperty objProp;
+	objProp.SetName(strName);
+	objProp.SetType(AMF_OBJECT);
+	objProp.SetObject(objVal);
+	AddProp(&objProp);
+}
+
 /************************************************************************************************************
 *	将属性prop追加到obj上(深拷贝实现);
 *
@@ -871,7 +897,7 @@ int AMFObject::GetPropCount()
 *
 *	优先以nIndex进行返回, 若nIndex<0 会根据name进行筛选;
 ************************************************************************************************************/
-AMFObjectProperty* AMFObject::GetProp(IN const AVal& strName, IN const int iIndex)
+AMFObjectProperty* AMFObject::GetObjectProp(IN const AVal& strName, IN const int iIndex)
 {
 	if (iIndex >= 0)
 	{
@@ -1325,7 +1351,7 @@ int AMFObjectProperty::Decode_AMF3(IN const char* strInput, IN int& iSize, IN co
 	/* decode name */
 	if (bDecodeName)
 	{
-		AVal name = AV_empty;
+		AVal name = sg_emptyVal;
 		int nRes = AMFObject::AMF3ReadString(name, strInput);
 
 		if (name.av_len <= 0)
@@ -1544,7 +1570,7 @@ AVal * AMF3ClassDef::AMF3CD_GetProp(int iIndex)
 {
 	if (iIndex >= cd_num)
 	{
-		return (AVal*)&AV_empty;
+		return (AVal*)&sg_emptyVal;
 	}
 	return &cd_props[iIndex];
 }

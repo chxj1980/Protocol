@@ -72,8 +72,9 @@ typedef struct AVal
 // 比较AVal字符串;
 #define AVMATCH(a1,a2)	((a1)->av_len == (a2)->av_len && !memcmp((a1)->av_val,(a2)->av_val,(a1)->av_len))
 
-class AMFObjectProperty;
+static const AVal sg_emptyVal = AVC(NULL);
 
+class AMFObjectProperty;
 // AMF对象, 就是由一系列的属性构成的;
 class AMFObject
 {
@@ -122,9 +123,13 @@ public:
 	// 重置
 	void Reset();
 
+	void AddProp(IN const AVal& strName, IN const double& dVal);
+	void AddProp(IN const AVal& strName, IN const AVal& strVal);
+	void AddProp(IN const AVal& strName, IN const AMFObject& objVal);
+
 	void AddProp(IN const AMFObjectProperty* pProp);
 	int GetPropCount();
-	AMFObjectProperty* GetProp(IN const AVal& strName, IN const int iIndex);
+	AMFObjectProperty* GetObjectProp(IN const AVal& strName, IN const int iIndex);
 
 public:
 	int o_num;					// 属性数目;
